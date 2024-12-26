@@ -19,11 +19,6 @@ var bootstrapCmd = &cobra.Command{
 	dit not yet setup the git repo, you can do so by within this command.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		err := os.Mkdir("bin", 0755)
-		if err != nil {
-			fmt.Println("Error creating bin directory:", err)
-			return
-		}
 		fmt.Println("bootstrap called")
 	},
 }

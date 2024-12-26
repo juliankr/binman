@@ -1,3 +1,6 @@
+binman:
+  url: 
+  version: 0.0.1
 yq:
   originalname: yq_${system}_${cpu}
   url: https://github.com/mikefarah/yq/releases/download/${version}/yq_${system}_${cpu}.tar.gz
