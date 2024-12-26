@@ -1,6 +1,3 @@
-/*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -20,12 +17,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// downloadCmd represents the download command
 var downloadCmd = &cobra.Command{
 	Use:   "download [binaries...]",
-	Short: "Download specified binaries from binman.yaml",
-	Long: `Download all binaries specified in the binman.yaml. 
-You can download only parts of the yaml by adding them as parameter.`,
+	Short: "Download binaries specified in binman.yaml",
+	Long: `Download binaries listed in the binman.yaml configuration file.
+You can specify which binaries to download by providing their names as arguments.
+If no arguments are provided, all binaries in the configuration will be downloaded.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		binaries, err := readBinariesConfig()
 		if err != nil {
@@ -56,7 +53,6 @@ You can download only parts of the yaml by adding them as parameter.`,
 				downloadBinary(key, bin, downloadDir, system, cpu)
 			}
 		}
-		fmt.Println("download called")
 	},
 }
 
@@ -124,7 +120,6 @@ func downloadBinary(key string, bin binary.Binary, downloadDir, system, cpu stri
 		return
 	}
 
-	// Extract the filename from the URL
 	filename := filepath.Base(url)
 	outPath := filepath.Join(downloadDir, filename)
 
@@ -134,30 +129,34 @@ func downloadBinary(key string, bin binary.Binary, downloadDir, system, cpu stri
 	}
 
 	if strings.HasSuffix(outPath, ".tar.gz") || strings.HasSuffix(outPath, ".tgz") {
-		fmt.Printf("Extracting archive %s\n", outPath)
 		extractDir := filepath.Join(downloadDir, key+"_extracted")
 		if err := untar(outPath, extractDir); err != nil {
 			fmt.Printf("Error extracting %s: %v\n", key, err)
 			return
 		}
-		fmt.Printf("Successfully extracted %s\n", key)
-		os.Remove(outPath) // Remove the archive after extraction
+		os.Remove(outPath)
 
-		// Move the extracted file with OriginalName to the bin folder and delete the rest
-		extractedFile := filepath.Join(extractDir, replacePlaceholders(bin.OriginalName, bin.Version, system, cpu))
+		originalName := bin.OriginalName
+		if originalName == "" {
+			originalName = key
+		}
+
+		extractedFile := filepath.Join(extractDir, replacePlaceholders(originalName, bin.Version, system, cpu))
 		finalPath := filepath.Join(downloadDir, key)
-		fmt.Printf("Renaming %s to %s\n", extractedFile, finalPath)
+		if _, err := os.Stat(finalPath); err == nil {
+			if err := os.Remove(finalPath); err != nil {
+				fmt.Printf("Error removing existing binary %s: %v\n", key, err)
+				return
+			}
+		}
 		if err := os.Rename(extractedFile, finalPath); err != nil {
-			fmt.Printf("Error renaming %s to %s: %v\n", extractedFile, finalPath, err)
+			fmt.Printf("Error renaming %s to %s: %v\n", extractedFile, finalPath)
 			return
 		}
 		outPath = finalPath
-
-		// Clean up extracted directory
 		os.RemoveAll(extractDir)
 	}
 
-	fmt.Printf("Setting executable permissions for %s\n", outPath)
 	if err := os.Chmod(outPath, 0755); err != nil {
 		fmt.Printf("Error making %s executable: %v\n", key, err)
 		return
@@ -174,7 +173,6 @@ func replacePlaceholders(s, version, system, cpu string) string {
 }
 
 func saveToFile(path string, body io.Reader) error {
-	fmt.Printf("Saving to file %s\n", path)
 	out, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)
@@ -188,14 +186,12 @@ func saveToFile(path string, body io.Reader) error {
 }
 
 func untar(src, dest string) error {
-	fmt.Printf("Opening archive %s\n", src)
 	file, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	fmt.Printf("Creating gzip reader for %s\n", src)
 	gzr, err := gzip.NewReader(file)
 	if err != nil {
 		return err
@@ -210,41 +206,31 @@ func untar(src, dest string) error {
 			break
 		}
 		if err != nil {
-			fmt.Printf("Error reading tar header: %v\n", err)
 			return err
 		}
 
 		target := filepath.Join(dest, header.Name)
-		fmt.Printf("Extracting %s to %s\n", header.Name, target)
 
-		// Ensure the parent directory exists
 		if err := os.MkdirAll(filepath.Dir(target), os.ModePerm); err != nil {
-			fmt.Printf("Error creating directory %s: %v\n", filepath.Dir(target), err)
 			return err
 		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			fmt.Printf("Creating directory %s\n", target)
 			if err := os.MkdirAll(target, os.ModePerm); err != nil {
-				fmt.Printf("Error creating directory %s: %v\n", target, err)
 				return err
 			}
 		case tar.TypeReg:
-			fmt.Printf("Creating file %s\n", target)
 			outFile, err := os.Create(target)
 			if err != nil {
-				fmt.Printf("Error creating file %s: %v\n", target, err)
 				return err
 			}
 			if _, err := io.Copy(outFile, tr); err != nil {
 				outFile.Close()
-				fmt.Printf("Error copying to file %s: %v\n", target, err)
 				return err
 			}
 			outFile.Close()
 		default:
-			fmt.Printf("Unknown type: %v in %s\n", header.Typeflag, header.Name)
 			return fmt.Errorf("unknown type: %v in %s", header.Typeflag, header.Name)
 		}
 	}

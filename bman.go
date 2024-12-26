@@ -1,9 +1,9 @@
 package main
 
 import (
-    "bin-manager/cmd"
+	"bin-manager/cmd"
 )
 
 func main() {
-    cmd.Execute()
+	cmd.Execute()
 }

@@ -1,5 +1,5 @@
 yq:
-  originalName: yq_${system}_${processor}
+  originalname: yq_${system}_${cpu}
   url: https://github.com/mikefarah/yq/releases/download/${version}/yq_${system}_${cpu}.tar.gz
   version: v4.44.6
 kubectl:
