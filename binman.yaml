@@ -1,0 +1,10 @@
+binman:
+  url: 
+  version: 0.0.1
+yq:
+  originalname: yq_${system}_${cpu}
+  url: https://github.com/mikefarah/yq/releases/download/${version}/yq_${system}_${cpu}.tar.gz
+  version: v4.44.6
+kubectl:
+  url: https://dl.k8s.io/release/${version}/bin/${system}/${cpu}/kubectl
+  version: v1.25.0
