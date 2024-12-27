@@ -6,33 +6,170 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"bin-manager/binary" // Import the binary package
 )
 
 // bootstrapCmd represents the bootstrap command
 var bootstrapCmd = &cobra.Command{
 	Use:   "bootstrap",
 	Short: "Initialize the bin-manager",
-	Long: `Create as a folder for all the binaries managed by bin-manager.
+	Long: `Create a folder for all the binaries managed by bin-manager.
 	It will download the binaries yaml from the provided git repo. In case you 
-	dit not yet setup the git repo, you can do so by within this command.
-`,
+	did not yet setup the git repo, you can do so within this command.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("bootstrap called")
+		if !isGitInstalled() {
+			fmt.Println("Error: git is not installed. Please install git and try again.")
+			os.Exit(1)
+		}
+
+		gitrepo, _ := cmd.Flags().GetString("gitrepo")
+		if gitrepo == "" {
+			fmt.Print("Please enter the URL of the git repository containing the binaries yaml: ")
+			fmt.Scanln(&gitrepo)
+		}
+
+		location, _ := cmd.Flags().GetString("location")
+		if location == "" {
+			defaultLocation := os.Getenv("HOME") + "/.binman"
+			fmt.Printf("Please enter the location to create the folder for binaries (default: %s): ", defaultLocation)
+			fmt.Scanln(&location)
+			if location == "" {
+				location = defaultLocation
+			}
+		}
+
+		if err := createDirectory(location); err != nil {
+			fmt.Printf("Failed to create directory: %s\n", err)
+			return
+		}
+
+		if isGitRepo(location) {
+			fmt.Printf("The folder %s is already a git repository.\n", location)
+		} else {
+			if err := cloneRepository(gitrepo, location); err != nil {
+				fmt.Printf("Failed to clone repository: %s\n", err)
+				return
+			}
+		}
+
+		if err := createBinmanYaml(location); err != nil {
+			fmt.Printf("Failed to create binman.yaml file: %s\n", err)
+			return
+		}
+
+		if err := copyBinary(location); err != nil {
+			fmt.Printf("Failed to copy binary: %s\n", err)
+			return
+		}
+
+		if err := updateGitignore(location); err != nil {
+			fmt.Printf("Failed to update .gitignore file: %s\n", err)
+			return
+		}
+
+		fmt.Println("")
+		fmt.Println("")
+		fmt.Printf("bootstrap called with gitrepo: %s and location: %s\n", gitrepo, location)
+		fmt.Println("Please push the changes to your repository.")
+		fmt.Printf("Add the following line to your shell configuration file to include %s/bin in your PATH:\n", location)
+		fmt.Printf("For bash:\n  echo 'export PATH=\"%s/bin:$PATH\"' >> ~/.bashrc\n", location)
+		fmt.Printf("For zsh:\n  echo 'export PATH=\"%s/bin:$PATH\"' >> ~/.zshrc\n", location)
 	},
+}
+
+func isGitInstalled() bool {
+	_, err := exec.LookPath("git")
+	return err == nil
+}
+
+func createDirectory(location string) error {
+	if _, err := os.Stat(location); os.IsNotExist(err) {
+		return os.MkdirAll(location, os.ModePerm)
+	}
+	return nil
+}
+
+func isGitRepo(location string) bool {
+	gitDir := filepath.Join(location, ".git")
+	if _, err := os.Stat(gitDir); err == nil {
+		return true
+	}
+	return false
+}
+
+func cloneRepository(gitrepo, location string) error {
+	fmt.Printf("Cloning repository %s into %s\n", gitrepo, location)
+	gitCmd := exec.Command("git", "clone", gitrepo, location)
+	gitCmd.Stdout = os.Stdout
+	gitCmd.Stderr = os.Stderr
+	return gitCmd.Run()
+}
+
+func createBinmanYaml(location string) error {
+	binmanFilePath := filepath.Join(location, "binman.yaml")
+	if _, err := os.Stat(binmanFilePath); os.IsNotExist(err) {
+		fmt.Printf("Creating binman.yaml file in %s\n", location)
+		bin := binary.Binary{
+			OriginalName: "binman",
+			Url:          "https://github.com/juliankr/binman",
+			Version:      "0.0.1",
+		}
+		content, err := bin.ToYAML()
+		if err != nil {
+			return err
+		}
+		return ioutil.WriteFile(binmanFilePath, []byte(content), 0644)
+	}
+	fmt.Printf("The folder %s already contains a binman.yaml file.\n", location)
+	return nil
+}
+
+func copyBinary(location string) error {
+	binmanBinaryPath := filepath.Join(location, "bin", "binman")
+	if _, err := os.Stat(binmanBinaryPath); os.IsNotExist(err) {
+		fmt.Printf("Copying current binary to %s\n", binmanBinaryPath)
+		if err := os.MkdirAll(filepath.Dir(binmanBinaryPath), os.ModePerm); err != nil {
+			return err
+		}
+		currentBinaryPath, err := os.Executable()
+		if err != nil {
+			return err
+		}
+		input, err := ioutil.ReadFile(currentBinaryPath)
+		if err != nil {
+			return err
+		}
+		return ioutil.WriteFile(binmanBinaryPath, input, 0755)
+	}
+	return nil
+}
+
+func updateGitignore(location string) error {
+	gitignorePath := filepath.Join(location, ".gitignore")
+	var gitignoreContent string
+	if _, err := os.Stat(gitignorePath); os.IsNotExist(err) {
+		gitignoreContent = "bin\n"
+	} else {
+		content, err := ioutil.ReadFile(gitignorePath)
+		if err != nil {
+			return err
+		}
+		gitignoreContent = string(content)
+		if !strings.Contains(gitignoreContent, "bin") {
+			gitignoreContent += "\nbin\n"
+		}
+	}
+	return ioutil.WriteFile(gitignorePath, []byte(gitignoreContent), 0644)
 }
 
 func init() {
 	rootCmd.AddCommand(bootstrapCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// bootstrapCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// bootstrapCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	bootstrapCmd.Flags().String("gitrepo", "", "URL of the git repository containing the binaries yaml")
+	bootstrapCmd.Flags().String("location", "", "Location to create the folder for binaries")
 }
