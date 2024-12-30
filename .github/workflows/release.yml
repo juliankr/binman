@@ -25,7 +25,6 @@ jobs:
       - name: Build binaries
         run: |
           version=${{ github.event.inputs.version }}
-          version=0.0.1
           mkdir -p ./bin
           for OS in "linux" "darwin"; do
             for ARCH in "amd64" "arm64"; do
