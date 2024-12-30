@@ -1,0 +1,50 @@
+name: Build and Release Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release'
+        required: true
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.23.4'
+
+      - name: Build binaries
+        run: |
+          declare -A os_map=( ["ubuntu-latest"]="linux" ["macos-latest"]="darwin" )
+          declare -A arch_map=( ["amd64"]="amd64" ["arm64"]="arm64" )
+          version=${{ github.event.inputs.version }}
+          mkdir -p ./bin
+          for os in "ubuntu-latest" "macos-latest"; do
+            for arch in "amd64" "arm64"; do
+              GOOS=${os_map[$os]}
+              GOARCH=${arch_map[$arch]}
+              go build -o bin-manager-${GOOS}-${GOARCH}-${version}
+              mv bin-manager-${GOOS}-${GOARCH}-${version} ./bin/
+            done
+          done
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: bin-manager-binaries
+          path: ./bin/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./bin/*
+          tag_name: ${{ github.event.inputs.version }}
+          release_name: Release ${{ github.event.inputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
