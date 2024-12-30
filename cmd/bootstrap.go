@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"bin-manager/binary" // Import the binary package
 )
 
@@ -73,13 +74,18 @@ var bootstrapCmd = &cobra.Command{
 			return
 		}
 
+		if err := createSourceFile(location); err != nil {
+			fmt.Printf("Failed to create .source file: %s\n", err)
+			return
+		}
+
 		fmt.Println("")
 		fmt.Println("")
 		fmt.Printf("bootstrap called with gitrepo: %s and location: %s\n", gitrepo, location)
 		fmt.Println("Please push the changes to your repository.")
 		fmt.Printf("Add the following line to your shell configuration file to include %s/bin in your PATH:\n", location)
-		fmt.Printf("For bash:\n  echo 'export PATH=\"%s/bin:$PATH\"' >> ~/.bashrc\n", location)
-		fmt.Printf("For zsh:\n  echo 'export PATH=\"%s/bin:$PATH\"' >> ~/.zshrc\n", location)
+		fmt.Printf("For bash:\n  echo 'source %s/.source' >> ~/.bashrc\n", location)
+		fmt.Printf("For zsh:\n  echo 'source %s/.source' >> ~/.zshrc\n", location)
 	},
 }
 
@@ -116,15 +122,18 @@ func createBinmanYaml(location string) error {
 	if _, err := os.Stat(binmanFilePath); os.IsNotExist(err) {
 		fmt.Printf("Creating binman.yaml file in %s\n", location)
 		bin := binary.Binary{
-			OriginalName: "binman",
-			Url:          "https://github.com/juliankr/binman",
-			Version:      "0.0.1",
+			OriginalName: "bin-manager-${system}-${cpu}-${version}",
+			Url:          "https://github.com/juliankr/binman/releases/download/0.0.1/bin-manager-${system}-${cpu}-${version}",
+			Version:      "0.0.2",
 		}
-		content, err := bin.ToYAML()
+		binman := map[string]binary.Binary{
+			"binman": bin,
+		}
+		content, err := yaml.Marshal(binman)
 		if err != nil {
 			return err
 		}
-		return ioutil.WriteFile(binmanFilePath, []byte(content), 0644)
+		return ioutil.WriteFile(binmanFilePath, content, 0644)
 	}
 	fmt.Printf("The folder %s already contains a binman.yaml file.\n", location)
 	return nil
@@ -154,7 +163,7 @@ func updateGitignore(location string) error {
 	gitignorePath := filepath.Join(location, ".gitignore")
 	var gitignoreContent string
 	if _, err := os.Stat(gitignorePath); os.IsNotExist(err) {
-		gitignoreContent = "bin\n"
+		gitignoreContent = "bin\n.source\n"
 	} else {
 		content, err := ioutil.ReadFile(gitignorePath)
 		if err != nil {
@@ -164,8 +173,17 @@ func updateGitignore(location string) error {
 		if !strings.Contains(gitignoreContent, "bin") {
 			gitignoreContent += "\nbin\n"
 		}
+		if !strings.Contains(gitignoreContent, ".source") {
+			gitignoreContent += "\n.source\n"
+		}
 	}
 	return ioutil.WriteFile(gitignorePath, []byte(gitignoreContent), 0644)
+}
+
+func createSourceFile(location string) error {
+	sourceFilePath := filepath.Join(location, ".source")
+	sourceContent := fmt.Sprintf("export PATH=\"%s/bin:$PATH\"\n", location)
+	return ioutil.WriteFile(sourceFilePath, []byte(sourceContent), 0644)
 }
 
 func init() {

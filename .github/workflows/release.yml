@@ -24,14 +24,13 @@ jobs:
 
       - name: Build binaries
         run: |
-          declare -A os_map=( ["ubuntu-latest"]="linux" ["macos-latest"]="darwin" )
-          declare -A arch_map=( ["amd64"]="amd64" ["arm64"]="arm64" )
           version=${{ github.event.inputs.version }}
+          version=0.0.1
           mkdir -p ./bin
-          for os in "ubuntu-latest" "macos-latest"; do
-            for arch in "amd64" "arm64"; do
-              GOOS=${os_map[$os]}
-              GOARCH=${arch_map[$arch]}
+          for OS in "linux" "darwin"; do
+            for ARCH in "amd64" "arm64"; do
+              GOOS=${OS}
+              GOARCH=$ARCH
               go build -o bin-manager-${GOOS}-${GOARCH}-${version}
               mv bin-manager-${GOOS}-${GOARCH}-${version} ./bin/
             done
@@ -42,4 +41,4 @@ jobs:
         with:
           files: ./bin/*
           tag_name: ${{ github.event.inputs.version }}
-          release_name: Release ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}

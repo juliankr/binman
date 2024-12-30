@@ -1,6 +1,7 @@
 binman:
-  url: 
+  url: https://github.com/juliankr/binman/releases/download/0.0.1/bin-manager-${system}-${cpu}-${version}
   version: 0.0.1
+  originalname: bin-manager-${system}-${cpu}-${version}
 yq:
   originalname: yq_${system}_${cpu}
   url: https://github.com/mikefarah/yq/releases/download/${version}/yq_${system}_${cpu}.tar.gz
@@ -8,3 +9,11 @@ yq:
 kubectl:
   url: https://dl.k8s.io/release/${version}/bin/${system}/${cpu}/kubectl
   version: v1.25.0
+kustomize:
+  url: https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${version}/kustomize_${version}_${system}_${cpu}.tar.gz
+  version: v5.5.0
+  originalname: kustomize
+argocd:
+  url: https://github.com/argoproj/argo-cd/releases/download/${version}/argocd-${system}-${cpu}
+  version: v2.13.2
+  originalname: argocd-${system}-${cpu}
