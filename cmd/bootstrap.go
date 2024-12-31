@@ -124,7 +124,7 @@ func createBinmanYaml(location string) error {
 		bin := binary.Binary{
 			OriginalName: "bin-manager-${system}-${cpu}-${version}",
 			Url:          "https://github.com/juliankr/binman/releases/download/0.0.1/bin-manager-${system}-${cpu}-${version}",
-			Version:      "0.0.3",
+			Version:      "0.0.4",
 		}
 		binman := map[string]binary.Binary{
 			"binman": bin,
