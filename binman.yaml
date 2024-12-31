@@ -1,7 +1,7 @@
 binman:
-  url: https://github.com/juliankr/binman/releases/download/0.0.1/bin-manager-${system}-${cpu}-${version}
-  version: 0.0.1
-  originalname: bin-manager-${system}-${cpu}-${version}
+  url: https://github.com/juliankr/binman/releases/download/${version}/bin-manager-${system}-${cpu}
+  version: 0.0.4
+  originalname: bin-manager-${system}-${cpu}
 yq:
   originalname: yq_${system}_${cpu}
   url: https://github.com/mikefarah/yq/releases/download/${version}/yq_${system}_${cpu}.tar.gz

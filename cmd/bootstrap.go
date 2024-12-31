@@ -122,8 +122,8 @@ func createBinmanYaml(location string) error {
 	if _, err := os.Stat(binmanFilePath); os.IsNotExist(err) {
 		fmt.Printf("Creating binman.yaml file in %s\n", location)
 		bin := binary.Binary{
-			OriginalName: "bin-manager-${system}-${cpu}-${version}",
-			Url:          "https://github.com/juliankr/binman/releases/download/0.0.1/bin-manager-${system}-${cpu}-${version}",
+			OriginalName: "bin-manager-${system}-${cpu}",
+			Url:          "https://github.com/juliankr/binman/releases/download/0.0.1/bin-manager-${system}-${cpu}",
 			Version:      "0.0.4",
 		}
 		binman := map[string]binary.Binary{
