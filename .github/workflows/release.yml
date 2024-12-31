@@ -21,19 +21,14 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23.4'
-
-      - name: Build binaries
-        run: |
-          version=${{ github.event.inputs.version }}
-          mkdir -p ./bin
-          for OS in "linux" "darwin"; do
-            for ARCH in "amd64" "arm64"; do
-              GOOS=${OS}
-              GOARCH=$ARCH
-              go build -o bin-manager-${GOOS}-${GOARCH}-${version}
-              mv bin-manager-${GOOS}-${GOARCH}-${version} ./bin/
-            done
-          done
+    
+      - name: Generate build files
+        uses: thatisuday/go-cross-build@v1
+        with:
+          platforms: 'linux/amd64, darwin/amd64, windows/amd64'
+          package: ''
+          name: 'bin-manager'
+          dest: 'bin'
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
