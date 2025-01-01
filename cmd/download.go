@@ -19,9 +19,6 @@ import (
 var downloadCmd = &cobra.Command{
 	Use:   "download [binaries...]",
 	Short: "Download binaries specified in binman.yaml",
-	Long: `Download binaries listed in the binman.yaml configuration file.
-You can specify which binaries to download by providing their names as arguments.
-If no arguments are provided, all binaries in the configuration will be downloaded.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		binaries, err := readBinariesConfig()
 		if err != nil {
