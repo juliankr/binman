@@ -2,15 +2,16 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 
+	"bin-manager/binary" // Import the binary package
+
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	"bin-manager/binary" // Import the binary package
 )
 
 // bootstrapCmd represents the bootstrap command
@@ -121,10 +122,10 @@ func createBinmanYaml(location string) error {
 		bin := binary.Binary{
 			OriginalName: "bin-manager-${system}-${cpu}",
 			Url:          "https://github.com/juliankr/binman/releases/download/${version}/bin-manager-${system}-${cpu}",
-			Version:      "0.1.0",
+			Version:      "0.2.0",
 			Source: []string{
 				"export PATH=${binman-path}/bin:$PATH",
-				"BMAN_PATH=${binman-path}",
+				"export BMAN_PATH=${binman-path}",
 			},
 		}
 		binman := map[string]binary.Binary{

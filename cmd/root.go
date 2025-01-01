@@ -16,14 +16,14 @@ var rootCmd = &cobra.Command{
 	Long: `Managing your binaries. Set versions. Download binaries, etc.
 
 The binman.yaml file should contain the configuration for each binary, including the URL, version, 
-original name, and any headers required for the download. The URL can contain placeholders for 
+original name, subPath, and any headers required for the download. The URL can contain placeholders for 
 version, system, and CPU architecture, which will be replaced with the appropriate values.
 
 Example binman.yaml:
 
 binman:
   url: https://github.com/juliankr/binman/releases/download/${version}/bin-manager-${system}-${cpu}
-  version: 0.0.4
+  version: 0.1.0
   originalName: bin-manager-${system}-${cpu}
   source:
    - "export PATH=${binman-path}/bin:$PATH"
@@ -47,6 +47,20 @@ private-release:
   url: https://api.github.com/repos/juliankr/private-release/releases/assets/
   urlPostfix:
     darwin-arm64: 217034482
+    darwin-amd64: 217034481 
+    linux-arm64: 217034479
+    linux-amd64: 217034480
+  version: 1.0.1
+  header:
+    - "Authorization: token ${GITHUB_TOKEN}"
+    - "Accept: application/octet-stream"
+  subPath: ".private-release/release/"
+  source:
+    - "export PATH=${binman-path}/bin/.private-release/release:$PATH"
+private:
+  url: https://api.github.com/repos/juliankr/private-release/releases/assets/
+  urlPostfix:
+    darwin-arm64: 217034482
     darwin-amd64: 217034481
     linux-arm64: 217034479
     linux-amd64: 217034480
@@ -54,6 +68,13 @@ private-release:
   header:
     - "Authorization: token ${GITHUB_TOKEN}"
     - "Accept: application/octet-stream"
+  subPath: ".private/release/"
+go:
+  url: https://go.dev/dl/go${version}.${system}-${cpu}.tar.gz
+  version: 1.23.4
+  subPath: ".sub/path/"
+  source:
+    - "export PATH=${binman-path}/bin/go/bin:$PATH"
 `,
 }
 

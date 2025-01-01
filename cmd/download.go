@@ -59,24 +59,12 @@ func init() {
 }
 
 func readBinariesConfig() (map[string]binary.Binary, error) {
-	bmanPath := os.Getenv("BMAN_PATH")
-	var yamlFile []byte
-	var err error
-
-	if bmanPath != "" {
-		yamlFile, err = ioutil.ReadFile(filepath.Join(bmanPath, "binman.yaml"))
-	} else {
-		ex, err := os.Executable()
-		if err != nil {
-			return nil, fmt.Errorf("error getting executable path: %w", err)
-		}
-		exPath := filepath.Dir(ex)
-		yamlFile, err = ioutil.ReadFile(filepath.Join(exPath, "../binman.yaml"))
-		if err != nil && os.IsNotExist(err) {
-			yamlFile, err = ioutil.ReadFile("binman.yaml")
-		}
+	bmanPath, err := binary.GetBmanPath()
+	if err != nil {
+		return nil, err
 	}
 
+	yamlFile, err := ioutil.ReadFile(filepath.Join(bmanPath, "binman.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("error reading binman.yaml: %w", err)
 	}
@@ -149,6 +137,10 @@ func downloadBinary(key string, bin binary.Binary, downloadDir string) {
 	}
 
 	finalPath := filepath.Join(downloadDir, key)
+	if bin.SubPath != "" {
+		finalPath = filepath.Join(downloadDir, bin.SubPath, key)
+	}
+
 	if strings.HasSuffix(outPath, ".tar.gz") || strings.HasSuffix(outPath, ".tgz") {
 		if err := extractAndRename(outPath, finalPath, bin, downloadDir); err != nil {
 			fmt.Printf("Error extracting and renaming %s: %v\n", key, err)
@@ -161,9 +153,11 @@ func downloadBinary(key string, bin binary.Binary, downloadDir string) {
 		}
 	}
 
-	if err := os.Chmod(finalPath, 0755); err != nil {
-		fmt.Printf("Error making %s executable: %v\n", key, err)
-		return
+	if fileInfo, err := os.Stat(finalPath); err == nil && !fileInfo.IsDir() {
+		if err := os.Chmod(finalPath, 0755); err != nil {
+			fmt.Printf("Error making %s executable: %v\n", key, err)
+			return
+		}
 	}
 
 	fmt.Printf("Successfully downloaded and made %s executable\n", key)
@@ -189,20 +183,40 @@ func extractAndRename(src, dest string, bin binary.Binary, downloadDir string) e
 	}
 	os.Remove(src)
 
-	extractedFile := filepath.Join(extractDir, binary.ReplacePlaceholders(bin.OriginalName, bin.Version, downloadDir))
-	if _, err := os.Stat(dest); err == nil {
-		if err := os.Remove(dest); err != nil {
-			return fmt.Errorf("error removing existing binary %s: %w", dest, err)
+	if bin.OriginalName == "" {
+		if _, err := os.Stat(dest); err == nil {
+			if err := os.RemoveAll(dest); err != nil {
+				return fmt.Errorf("error removing existing directory %s: %w", dest, err)
+			}
 		}
+		if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
+			return fmt.Errorf("error creating directory %s: %w", filepath.Dir(dest), err)
+		}
+		if err := os.Rename(extractDir, dest); err != nil {
+			return fmt.Errorf("error renaming %s to %s: %w", extractDir, dest, err)
+		}
+	} else {
+		extractedFile := filepath.Join(extractDir, binary.ReplacePlaceholders(bin.OriginalName, bin.Version))
+		if _, err := os.Stat(dest); err == nil {
+			if err := os.RemoveAll(dest); err != nil {
+				return fmt.Errorf("error removing existing binary %s: %w", dest, err)
+			}
+		}
+		if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
+			return fmt.Errorf("error creating directory %s: %w", filepath.Dir(dest), err)
+		}
+		if err := os.Rename(extractedFile, dest); err != nil {
+			return fmt.Errorf("error renaming %s to %s: %w", extractedFile, dest, err)
+		}
+		os.RemoveAll(extractDir)
 	}
-	if err := os.Rename(extractedFile, dest); err != nil {
-		return fmt.Errorf("error renaming %s to %s: %w", extractedFile, dest, err)
-	}
-	os.RemoveAll(extractDir)
 	return nil
 }
 
 func renameBinary(src, dest string) error {
+	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
+		return fmt.Errorf("error creating directory %s: %w", filepath.Dir(dest), err)
+	}
 	if err := os.Rename(src, dest); err != nil {
 		return fmt.Errorf("error renaming %s to %s: %w", src, dest, err)
 	}
@@ -263,13 +277,21 @@ func untar(src, dest string) error {
 }
 
 func createSourceFile(location string, binaries map[string]binary.Binary) error {
-	sourceFilePath := filepath.Join(location, ".source")
+	bmanPath, err := binary.GetBmanPath()
+	if err != nil {
+		return err
+	}
+
+	sourceFilePath := filepath.Join(bmanPath, ".source")
+	if err := os.Remove(sourceFilePath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error removing existing .source file: %w", err)
+	}
+
 	var sourceContent strings.Builder
 	for _, bin := range binaries {
 		for _, line := range bin.Source {
-			sourceContent.WriteString(binary.ReplacePlaceholders(line, bin.Version, location) + "\n")
+			sourceContent.WriteString(binary.ReplacePlaceholders(line, bin.Version) + "\n")
 		}
 	}
 	return ioutil.WriteFile(sourceFilePath, []byte(sourceContent.String()), 0644)
 }
-

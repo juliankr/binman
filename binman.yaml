@@ -1,10 +1,10 @@
 binman:
   url: https://github.com/juliankr/binman/releases/download/${version}/bin-manager-${system}-${cpu}
-  version: 0.0.4
+  version: 0.1.0
   originalName: bin-manager-${system}-${cpu}
   source:
    - "export PATH=${binman-path}/bin:$PATH"
-   - "BMAN_PATH=${binman-path}"
+   - "export BMAN_PATH=${binman-path}"
 yq:
   originalName: yq_${system}_${cpu}
   url: https://github.com/mikefarah/yq/releases/download/${version}/yq_${system}_${cpu}.tar.gz
@@ -31,3 +31,12 @@ private-release:
   header:
     - "Authorization: token ${GITHUB_TOKEN}"
     - "Accept: application/octet-stream"
+  subPath: ".private-release/release/"
+  source:
+    - "export PATH=${binman-path}/bin/.private-release/release:$PATH"
+go:
+  url: https://go.dev/dl/go${version}.${system}-${cpu}.tar.gz
+  version: 1.23.4
+  originalName: "go"
+  source:
+    - "export PATH=${binman-path}/bin/go/bin:$PATH"
