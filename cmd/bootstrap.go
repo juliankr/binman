@@ -74,7 +74,7 @@ var bootstrapCmd = &cobra.Command{
 			return
 		}
 
-		if err := createSourceFile(location); err != nil {
+		if err := createInitSourceFile(location); err != nil {
 			fmt.Printf("Failed to create .source file: %s\n", err)
 			return
 		}
@@ -123,8 +123,12 @@ func createBinmanYaml(location string) error {
 		fmt.Printf("Creating binman.yaml file in %s\n", location)
 		bin := binary.Binary{
 			OriginalName: "bin-manager-${system}-${cpu}",
-			Url:          "https://github.com/juliankr/binman/releases/download/0.0.1/bin-manager-${system}-${cpu}",
-			Version:      "0.0.4",
+			Url:          "https://github.com/juliankr/binman/releases/download/${version}/bin-manager-${system}-${cpu}",
+			Version:      "0.1.0",
+			Source: []string{
+				"export PATH=${binman-path}/bin:$PATH",
+				"BMAN_PATH=${binman-path}",
+			},
 		}
 		binman := map[string]binary.Binary{
 			"binman": bin,
@@ -163,7 +167,7 @@ func updateGitignore(location string) error {
 	gitignorePath := filepath.Join(location, ".gitignore")
 	var gitignoreContent string
 	if _, err := os.Stat(gitignorePath); os.IsNotExist(err) {
-		gitignoreContent = "bin\n.source\n"
+		gitignoreContent = "bin/\n.source\n"
 	} else {
 		content, err := ioutil.ReadFile(gitignorePath)
 		if err != nil {
@@ -180,7 +184,7 @@ func updateGitignore(location string) error {
 	return ioutil.WriteFile(gitignorePath, []byte(gitignoreContent), 0644)
 }
 
-func createSourceFile(location string) error {
+func createInitSourceFile(location string) error {
 	sourceFilePath := filepath.Join(location, ".source")
 	sourceContent := fmt.Sprintf("export PATH=\"%s/bin:$PATH\"\n", location)
 	return ioutil.WriteFile(sourceFilePath, []byte(sourceContent), 0644)

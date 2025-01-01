@@ -49,6 +49,11 @@ If no arguments are provided, all binaries in the configuration will be download
 				downloadBinary(key, bin, downloadDir)
 			}
 		}
+
+		if err := createSourceFile(downloadDir, binaries); err != nil {
+			fmt.Printf("Error creating .source file: %v\n", err)
+			return
+		}
 	},
 }
 
@@ -109,10 +114,24 @@ func createDownloadDir() (string, error) {
 }
 
 func downloadBinary(key string, bin binary.Binary, downloadDir string) {
-	url := binary.ReplacePlaceholders(bin.Url, bin.Version)
+	url := bin.GetUrl()
 	fmt.Printf("Downloading %s from %s\n", key, url)
 
-	resp, err := http.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Printf("Error creating request for %s: %v\n", key, err)
+		return
+	}
+
+	for _, header := range bin.Header {
+		parts := strings.SplitN(header, ": ", 2)
+		if len(parts) == 2 {
+			value := os.ExpandEnv(parts[1])
+			req.Header.Set(parts[0], value)
+		}
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Printf("Error downloading %s: %v\n", key, err)
 		return
@@ -132,51 +151,20 @@ func downloadBinary(key string, bin binary.Binary, downloadDir string) {
 		return
 	}
 
-	originalName := bin.OriginalName
-	if originalName == "" {
-		originalName = key
-	}
-
+	finalPath := filepath.Join(downloadDir, key)
 	if strings.HasSuffix(outPath, ".tar.gz") || strings.HasSuffix(outPath, ".tgz") {
-		extractDir := filepath.Join(downloadDir, key+"_extracted")
-		if err := untar(outPath, extractDir); err != nil {
-			fmt.Printf("Error extracting %s: %v\n", key, err)
+		if err := extractAndRename(outPath, finalPath, bin, downloadDir); err != nil {
+			fmt.Printf("Error extracting and renaming %s: %v\n", key, err)
 			return
 		}
-		os.Remove(outPath)
-
-		extractedFile := filepath.Join(extractDir, binary.ReplacePlaceholders(originalName, bin.Version))
-		finalPath := filepath.Join(downloadDir, key)
-		if _, err := os.Stat(finalPath); err == nil {
-			if err := os.Remove(finalPath); err != nil {
-				fmt.Printf("Error removing existing binary %s: %v\n", key, err)
-				return
-			}
-		}
-		if err := os.Rename(extractedFile, finalPath); err != nil {
-			fmt.Printf("Error renaming %s to %s: %v\n", extractedFile, finalPath, err)
-			return
-		}
-		outPath = finalPath
-		os.RemoveAll(extractDir)
 	} else {
-		finalPath := filepath.Join(downloadDir, key)
-		if originalName != key {
-			if _, err := os.Stat(finalPath); err == nil {
-				if err := os.Remove(finalPath); err != nil {
-					fmt.Printf("Error removing existing binary %s: %v\n", key, err)
-					return
-				}
-			}
-			if err := os.Rename(outPath, finalPath); err != nil {
-				fmt.Printf("Error renaming %s to %s: %v\n", outPath, finalPath, err)
-				return
-			}
-			outPath = finalPath
+		if err := renameBinary(outPath, finalPath); err != nil {
+			fmt.Printf("Error renaming %s: %v\n", key, err)
+			return
 		}
 	}
 
-	if err := os.Chmod(outPath, 0755); err != nil {
+	if err := os.Chmod(finalPath, 0755); err != nil {
 		fmt.Printf("Error making %s executable: %v\n", key, err)
 		return
 	}
@@ -193,6 +181,33 @@ func saveToFile(path string, body io.Reader) error {
 
 	if _, err := io.Copy(out, body); err != nil {
 		return fmt.Errorf("error saving file: %w", err)
+	}
+	return nil
+}
+
+func extractAndRename(src, dest string, bin binary.Binary, downloadDir string) error {
+	extractDir := filepath.Join(downloadDir, filepath.Base(dest)+"_extracted")
+	if err := untar(src, extractDir); err != nil {
+		return fmt.Errorf("error extracting %s: %w", src, err)
+	}
+	os.Remove(src)
+
+	extractedFile := filepath.Join(extractDir, binary.ReplacePlaceholders(bin.OriginalName, bin.Version, downloadDir))
+	if _, err := os.Stat(dest); err == nil {
+		if err := os.Remove(dest); err != nil {
+			return fmt.Errorf("error removing existing binary %s: %w", dest, err)
+		}
+	}
+	if err := os.Rename(extractedFile, dest); err != nil {
+		return fmt.Errorf("error renaming %s to %s: %w", extractedFile, dest, err)
+	}
+	os.RemoveAll(extractDir)
+	return nil
+}
+
+func renameBinary(src, dest string) error {
+	if err := os.Rename(src, dest); err != nil {
+		return fmt.Errorf("error renaming %s to %s: %w", src, dest, err)
 	}
 	return nil
 }
@@ -249,3 +264,15 @@ func untar(src, dest string) error {
 
 	return nil
 }
+
+func createSourceFile(location string, binaries map[string]binary.Binary) error {
+	sourceFilePath := filepath.Join(location, ".source")
+	var sourceContent strings.Builder
+	for _, bin := range binaries {
+		for _, line := range bin.Source {
+			sourceContent.WriteString(binary.ReplacePlaceholders(line, bin.Version, location) + "\n")
+		}
+	}
+	return ioutil.WriteFile(sourceFilePath, []byte(sourceContent.String()), 0644)
+}
+

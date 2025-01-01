@@ -1,9 +1,12 @@
 binman:
   url: https://github.com/juliankr/binman/releases/download/${version}/bin-manager-${system}-${cpu}
   version: 0.0.4
-  originalname: bin-manager-${system}-${cpu}
+  originalName: bin-manager-${system}-${cpu}
+  source:
+   - "export PATH=${binman-path}/bin:$PATH"
+   - "BMAN_PATH=${binman-path}"
 yq:
-  originalname: yq_${system}_${cpu}
+  originalName: yq_${system}_${cpu}
   url: https://github.com/mikefarah/yq/releases/download/${version}/yq_${system}_${cpu}.tar.gz
   version: v4.44.6
 kubectl:
@@ -12,8 +15,19 @@ kubectl:
 kustomize:
   url: https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${version}/kustomize_${version}_${system}_${cpu}.tar.gz
   version: v5.5.0
-  originalname: kustomize
+  originalName: kustomize
 argocd:
   url: https://github.com/argoproj/argo-cd/releases/download/${version}/argocd-${system}-${cpu}
   version: v2.13.2
-  originalname: argocd-${system}-${cpu}
+  originalName: argocd-${system}-${cpu}
+private-release:
+  url: https://api.github.com/repos/juliankr/private-release/releases/assets/
+  urlPostfix:
+    darwin-arm64: 217034482
+    darwin-amd64: 217034481
+    linux-arm64: 217034479
+    linux-amd64: 217034480
+  version: 1.0.1
+  header:
+    - "Authorization: token ${GITHUB_TOKEN}"
+    - "Accept: application/octet-stream"
