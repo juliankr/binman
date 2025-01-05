@@ -23,7 +23,7 @@ kustomize:
 argocd:
   url: https://github.com/argoproj/argo-cd/releases/download/${version}/argocd-${system}-${cpu}
   # renovate: datasource=github-releases depName=argoproj/argo-cd
-  version: v2.13.2
+  version: v2.13.3
   originalName: argocd-${system}-${cpu}
 private-release:
   url: https://api.github.com/repos/juliankr/private-release/releases/assets/
