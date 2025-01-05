@@ -1,7 +1,7 @@
 binman:
   url: https://github.com/juliankr/binman/releases/download/${version}/bin-manager-${system}-${cpu}
   # renovate: datasource=github-releases depName=juliankr/binman
-  version: 0.2.0
+  version: 0.3.0
   originalName: bin-manager-${system}-${cpu}
   source:
    - "export PATH=${binman-path}/bin:$PATH"

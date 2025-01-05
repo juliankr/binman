@@ -153,8 +153,12 @@ func downloadBinary(key string, bin binary.Binary, downloadDir string) {
 			return
 		}
 	} else {
+		if err := os.MkdirAll(filepath.Dir(finalPath), os.ModePerm); err != nil {
+			fmt.Errorf("error creating directory %s: %w", filepath.Dir(finalPath), err)
+			return
+		}
 		if err := os.Rename(outPath, finalPath); err != nil {
-			fmt.Printf("Error renaming %s: %v\n", key, err)
+			fmt.Errorf("error renaming %s to %s: %w", outPath, finalPath, err)
 			return
 		}
 	}
