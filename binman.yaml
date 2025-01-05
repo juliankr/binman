@@ -1,5 +1,6 @@
 binman:
   url: https://github.com/juliankr/binman/releases/download/${version}/bin-manager-${system}-${cpu}
+  # renovate: datasource=github-releases depName=juliankr/binman
   version: 0.1.0
   originalName: bin-manager-${system}-${cpu}
   source:
@@ -8,16 +9,20 @@ binman:
 yq:
   originalName: yq_${system}_${cpu}
   url: https://github.com/mikefarah/yq/releases/download/${version}/yq_${system}_${cpu}.tar.gz
+  # renovate: datasource=github-releases depName=mikefarah/yq
   version: v4.44.6
 kubectl:
+  # renovate: datasource=github-releases depName=kubernetes/kubernetes
   url: https://dl.k8s.io/release/${version}/bin/${system}/${cpu}/kubectl
   version: v1.25.0
 kustomize:
   url: https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${version}/kustomize_${version}_${system}_${cpu}.tar.gz
+  # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
   version: v5.5.0
   originalName: kustomize
 argocd:
   url: https://github.com/argoproj/argo-cd/releases/download/${version}/argocd-${system}-${cpu}
+  # renovate: datasource=github-releases depName=argoproj/argo-cd
   version: v2.13.2
   originalName: argocd-${system}-${cpu}
 private-release:
@@ -36,7 +41,13 @@ private-release:
     - "export PATH=${binman-path}/bin/.private-release/release:$PATH"
 go:
   url: https://go.dev/dl/go${version}.${system}-${cpu}.tar.gz
+  # renovate: datasource=github-releases depName=golang/go
   version: 1.23.4
   originalName: "go"
   source:
     - "export PATH=${binman-path}/bin/go/bin:$PATH"
+terraform:
+  url: https://releases.hashicorp.com/terraform/${version}/terraform_${version}_${system}_${cpu}.zip
+  # renovate: datasource=github-releases depName=hashicorp/terraform
+  version: 1.0.11
+  originalName: terraform

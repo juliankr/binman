@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bin-manager/binary"
 	"compress/gzip"
 	"fmt"
@@ -21,7 +22,7 @@ var downloadCmd = &cobra.Command{
 	Short: "Download binaries specified in binman.yaml",
 	Run: func(cmd *cobra.Command, args []string) {
 		binaries, err := readBinariesConfig()
-		if err != nil {
+		if (err != nil) {
 			fmt.Printf("Error reading binaries config: %v\n", err)
 			return
 		}
@@ -142,12 +143,17 @@ func downloadBinary(key string, bin binary.Binary, downloadDir string) {
 	}
 
 	if strings.HasSuffix(outPath, ".tar.gz") || strings.HasSuffix(outPath, ".tgz") {
-		if err := extractAndRename(outPath, finalPath, bin, downloadDir); err != nil {
+		if err := extractAndRename(outPath, finalPath, bin, downloadDir, untar); err != nil {
+			fmt.Printf("Error extracting and renaming %s: %v\n", key, err)
+			return
+		}
+	} else if strings.HasSuffix(outPath, ".zip") {
+		if err := extractAndRename(outPath, finalPath, bin, downloadDir, unzip); err != nil {
 			fmt.Printf("Error extracting and renaming %s: %v\n", key, err)
 			return
 		}
 	} else {
-		if err := renameBinary(outPath, finalPath); err != nil {
+		if err := os.Rename(outPath, finalPath); err != nil {
 			fmt.Printf("Error renaming %s: %v\n", key, err)
 			return
 		}
@@ -176,13 +182,17 @@ func saveToFile(path string, body io.Reader) error {
 	return nil
 }
 
-func extractAndRename(src, dest string, bin binary.Binary, downloadDir string) error {
+func extractAndRename(src, dest string, bin binary.Binary, downloadDir string, extractFunc func(string, string) error) error {
 	extractDir := filepath.Join(downloadDir, filepath.Base(dest)+"_extracted")
-	if err := untar(src, extractDir); err != nil {
+	if err := extractFunc(src, extractDir); err != nil {
 		return fmt.Errorf("error extracting %s: %w", src, err)
 	}
 	os.Remove(src)
 
+	return renameExtracted(extractDir, dest, bin)
+}
+
+func renameExtracted(extractDir, dest string, bin binary.Binary) error {
 	if bin.OriginalName == "" {
 		if _, err := os.Stat(dest); err == nil {
 			if err := os.RemoveAll(dest); err != nil {
@@ -209,16 +219,6 @@ func extractAndRename(src, dest string, bin binary.Binary, downloadDir string) e
 			return fmt.Errorf("error renaming %s to %s: %w", extractedFile, dest, err)
 		}
 		os.RemoveAll(extractDir)
-	}
-	return nil
-}
-
-func renameBinary(src, dest string) error {
-	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", filepath.Dir(dest), err)
-	}
-	if err := os.Rename(src, dest); err != nil {
-		return fmt.Errorf("error renaming %s to %s: %w", src, dest, err)
 	}
 	return nil
 }
@@ -273,6 +273,50 @@ func untar(src, dest string) error {
 		}
 	}
 
+	return nil
+}
+
+func unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		fpath := filepath.Join(dest, f.Name)
+		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", fpath)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(fpath, os.ModePerm)
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.Create(fpath)
+		if err != nil {
+			return err
+		}
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+
+		if _, err := io.Copy(outFile, rc); err != nil {
+			outFile.Close()
+			rc.Close()
+			return err
+		}
+
+		outFile.Close()
+		rc.Close()
+	}
 	return nil
 }
 
