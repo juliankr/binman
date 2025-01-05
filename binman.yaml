@@ -14,7 +14,7 @@ yq:
 kubectl:
   # renovate: datasource=github-releases depName=kubernetes/kubernetes
   url: https://dl.k8s.io/release/${version}/bin/${system}/${cpu}/kubectl
-  version: v1.25.0
+  version: v1.32.0
 kustomize:
   url: https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${version}/kustomize_${version}_${system}_${cpu}.tar.gz
   # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
