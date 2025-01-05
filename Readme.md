@@ -30,3 +30,12 @@ To install Binary Manager, you can download the latest release from the GitHub r
 The `binman.yaml` file should contain the configuration for each binary. The URL can contain placeholders for version, system, and CPU architecture, which will be replaced with the appropriate values.
 
 ### Example `binman.yaml`
+
+## Keep binaries up to date
+You can use renovate to keep your binaries up to date. To tell renovate, where it should fetch the versions, you need to add a comment above the version.
+` # renovate: datasource=<DATASOURCE> depName=<DEPENDENCY_NAME>`
+E.g for github releases you can use
+`# renovate: datasource=github-releases depName=<REPO e.g. mikfeah/yq>`
+
+The corresponding config for renovite is under renovate/config.js. 
+
